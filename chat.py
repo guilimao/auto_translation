@@ -72,8 +72,25 @@ def process_stream(messages):
         print(f"\033[93m[流式传输结束原因: {finish_reason}]\033[0m")
     return content, reasoning_content, tool_calls
 
+# 加载系统提示词
+def load_system_prompt():
+    """从文件加载系统提示词"""
+    try:
+        with open("system_prompt.txt", "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        print("\033[93m[警告: system_prompt.txt 不存在，将不使用系统提示词]\033[0m")
+        return None
+
 def main():
+    # 加载系统提示词
+    system_prompt = load_system_prompt()
     messages = []
+    
+    # 如果系统提示词存在，添加到消息列表
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+        print("\033[92m[系统提示词已加载]\033[0m")
     print("开始对话 (输入 'quit' 退出)")
     
     while True:

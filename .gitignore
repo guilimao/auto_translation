@@ -12,3 +12,5 @@
 
 # 保留.gitignore本身
 !.gitignore
+
+!system_prompt.txt
