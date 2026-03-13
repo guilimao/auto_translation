@@ -40,20 +40,27 @@ def compile_tex_to_image(tex_file_path: Union[str, Path]) -> Union[Tuple[bytes, 
         # 写入临时TeX文件
         temp_tex_path.write_text(tex_content, encoding='utf-8')
         
+        # 获取项目根目录下的fonts目录绝对路径
+        script_dir = Path(__file__).parent.parent
+        fonts_dir = script_dir / "fonts"
+        
+        # 确保fonts目录存在
+        fonts_dir.mkdir(exist_ok=True)
+        
         # 使用Docker运行TeX Live编译
         # 挂载临时目录到容器的/work目录
-        # 使用 xelatex 替代 pdflatex 以更好支持中文
+        # 挂载fonts目录到容器的/fonts目录
+        # 使用 lualatex 引擎并设置 OSFONTDIR 指向 fonts 目录
         docker_cmd = [
             "docker", "run", "--rm",
             "-v", f"{temp_dir}:/work",
+            "-v", f"{fonts_dir}:/fonts:ro",
+            "-e", "OSFONTDIR=/fonts",          # 添加字体搜索路径
             "-w", "/work",
             "texlive/texlive:latest-full",
-            "xelatex",
-            "-interaction=nonstopmode",
-            "-halt-on-error",
-            "document.tex"
+            "sh", "-c",
+            "luaotfload-tool --update --force && lualatex -interaction=nonstopmode -halt-on-error document.tex"
         ]
-        
         # 执行编译命令，捕获输出
         result = subprocess.run(
             docker_cmd,

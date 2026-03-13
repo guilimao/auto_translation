@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-translation"
+version = "0.1.0"
+description = "基于Agent和LaTeX的自动翻译工具"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.0.0",
+    "PyMuPDF>=1.23.0",
+]
+
+[project.scripts]
+chat = "chat:main"
+tex-gui = "tools.tex_compiler_gui:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tools*"]
+exclude = ["__pycache__*", ".venv*"]
