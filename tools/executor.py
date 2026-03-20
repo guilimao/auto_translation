@@ -5,21 +5,23 @@
 import json
 
 # 导入所有工具函数
-from .tex_compiler import tex_compiler
 from .read_file import read_file
 from .write_file import write_file
 from .replace import replace
-from .pdf_reader import pdf_reader
+from .typst_compiler import typst_compiler
+from .directory_list import list_directory
+from .image_tools import read_image
 
 
 # ========== 工具函数映射 ==========
 
 TOOL_FUNCTIONS = {
-    "tex_compiler": tex_compiler,
     "read_file": read_file,
     "write_file": write_file,
     "replace": replace,
-    "pdf_reader": pdf_reader,
+    "typst_compiler": typst_compiler,
+    "list_directory": list_directory,
+    "read_image": read_image,
 }
 
 
@@ -54,10 +56,6 @@ def process_tool_calls(messages, tool_calls):
         try:
             result_obj = json.loads(result)
             if result_obj.get("type") == "image":
-                # 如果是tex_compiler工具返回，移除上下文中上一个tex_compiler的图像信息
-                if func_name == "tex_compiler":
-                    _remove_previous_tex_compiler_image(messages)
-                
                 # 图像类型：使用官方推荐的 image_url 格式
                 base64_data = result_obj.get("data", "")
                 image_format = result_obj.get("format", "png")
@@ -96,33 +94,3 @@ def process_tool_calls(messages, tool_calls):
             "content": str(result)
         })
     return True
-
-
-def _remove_previous_tex_compiler_image(messages):
-    """移除上下文中上一个tex_compiler工具的图像信息，替换为'图像已省略'"""
-    # 从后向前遍历，找到上一个tex_compiler的tool结果
-    for i in range(len(messages) - 1, -1, -1):
-        msg = messages[i]
-        # 检查是否是tool角色且包含图像内容
-        if msg.get("role") == "tool" and isinstance(msg.get("content"), list):
-            # 检查是否包含image_url类型的内容
-            has_image = any(
-                item.get("type") == "image_url" 
-                for item in msg["content"] 
-                if isinstance(item, dict)
-            )
-            if has_image:
-                # 找到上一个tex_compiler的图像，替换为文本
-                # 保留原有的text内容，将image_url替换为"图像已省略"文本
-                new_content = []
-                for item in msg["content"]:
-                    if isinstance(item, dict) and item.get("type") == "image_url":
-                        # 将图像替换为提示文本
-                        new_content.append({
-                            "type": "text",
-                            "text": "[图像已省略]"
-                        })
-                    else:
-                        new_content.append(item)
-                msg["content"] = new_content
-                break
