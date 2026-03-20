@@ -134,4 +134,33 @@ TOOLS = [
             },
         }
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "pdf_to_image",
+            "description": "将PDF文件转换为PNG图像。使用PyMuPDF将输入的PDF文件转换为原始尺寸的PNG图像，输出保存到项目根目录下的work文件夹中，每次调用会创建一个新的文件名+时间戳子文件夹。每张图像以文件名+所在页数的格式命名。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pdf_path": {
+                        "type": "string",
+                        "description": "要转换的PDF文件路径"
+                    }
+                },
+                "required": ["pdf_path"],
+            },
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "font_list",
+            "description": "列出 Typst 所有可用的字体列表。",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        }
+    },
 ]

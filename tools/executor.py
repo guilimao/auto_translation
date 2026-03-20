@@ -11,6 +11,8 @@ from .replace import replace
 from .typst_compiler import typst_compiler
 from .directory_list import list_directory
 from .image_tools import read_image
+from .pdf_to_image import pdf_to_image
+from .font_list import font_list
 
 
 # ========== 工具函数映射 ==========
@@ -22,6 +24,8 @@ TOOL_FUNCTIONS = {
     "typst_compiler": typst_compiler,
     "list_directory": list_directory,
     "read_image": read_image,
+    "pdf_to_image": pdf_to_image,
+    "font_list": font_list,
 }
 
 
@@ -54,7 +58,26 @@ def process_tool_calls(messages, tool_calls):
         
         # 尝试解析结果是否为图像类型
         try:
-            result_obj = json.loads(result)
+            # 如果 result 已经是字典，直接使用；如果是字符串，解析为 JSON
+            if isinstance(result, dict):
+                result_obj = result
+            else:
+                result_obj = json.loads(result)
+            
+            # 处理 image_content 类型（read_image 返回的类型）
+            if result_obj.get("type") == "image_content":
+                # 图像类型：构造标准的 tool 消息格式
+                content_list = result_obj.get("content", [])
+                filename = result_obj.get("filename", "图像")
+                
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": content_list
+                })
+                continue
+            
+            # 处理旧的 image 类型（兼容旧版本）
             if result_obj.get("type") == "image":
                 # 图像类型：使用官方推荐的 image_url 格式
                 base64_data = result_obj.get("data", "")
