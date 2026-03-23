@@ -34,7 +34,8 @@ TOOL_FUNCTIONS = {
 def execute_tool(tool_call):
     """执行单个工具调用，返回结果"""
     func_name = tool_call["function"]["name"]
-    func_args = json.loads(tool_call["function"]["arguments"])
+    arguments = tool_call["function"].get("arguments", "") or "{}"
+    func_args = json.loads(arguments)
     
     if func_name not in TOOL_FUNCTIONS:
         error_msg = f"未知工具: {func_name}"
