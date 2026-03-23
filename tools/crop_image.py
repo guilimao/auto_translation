@@ -11,6 +11,36 @@ from typing import Union, Dict, List, Any, Tuple
 from PIL import Image
 
 
+def resize_to_max_size(img: Image.Image, max_size: int, allow_upscale: bool = True) -> Image.Image:
+    """
+    将图像缩放到指定最大尺寸。
+    
+    参数:
+        img: PIL图像对象
+        max_size: 最大尺寸（长或宽）
+        allow_upscale: 是否允许放大（True时小于max_size会放大，False时保持原样）
+    
+    返回:
+        缩放后的图像对象
+    """
+    width, height = img.size
+    
+    # 如果图像已经在限制范围内且不允许放大，直接返回
+    if not allow_upscale and width <= max_size and height <= max_size:
+        return img
+    
+    # 计算缩放比例，使长宽均不超过max_size
+    ratio = min(max_size / width, max_size / height)
+    
+    # 只有当需要缩放时才执行（避免不必要的重采样）
+    if ratio < 1.0 or (ratio > 1.0 and allow_upscale):
+        new_width = int(width * ratio)
+        new_height = int(height * ratio)
+        return img.resize((new_width, new_height), Image.LANCZOS)
+    
+    return img
+
+
 def crop_image(image_path: str, bbox: List[int]) -> Dict[str, Any]:
     """
     根据BBOX框截取图像的特定区域并保存。
@@ -75,24 +105,30 @@ def crop_image(image_path: str, bbox: List[int]) -> Dict[str, Any]:
                 "message": f"bbox坐标顺序错误，需要满足x1 < x2且y1 < y2，当前: {bbox}"
             }
         
+        max_size = 1920
+        
         # 打开图像
         with Image.open(image_path) as img:
-            original_width, original_height = img.size
+            input_width, input_height = img.size
             
-            # 将相对坐标(0-999)转换为实际像素坐标
-            pixel_x1 = int(original_width * x1 / 999)
-            pixel_x2 = int(original_width * x2 / 999)
-            pixel_y1 = int(original_height * y1 / 999)
-            pixel_y2 = int(original_height * y2 / 999)
+            # 输入图像处理：大于1920则缩小，小于1920则放大到尽可能大但不超过1920
+            processed_img = resize_to_max_size(img, max_size, allow_upscale=True)
+            processed_width, processed_height = processed_img.size
+            
+            # 将相对坐标(0-999)转换为处理后的图像的像素坐标
+            pixel_x1 = int(processed_width * x1 / 999)
+            pixel_x2 = int(processed_width * x2 / 999)
+            pixel_y1 = int(processed_height * y1 / 999)
+            pixel_y2 = int(processed_height * y2 / 999)
             
             # 确保坐标不越界
-            pixel_x1 = max(0, min(pixel_x1, original_width))
-            pixel_x2 = max(0, min(pixel_x2, original_width))
-            pixel_y1 = max(0, min(pixel_y1, original_height))
-            pixel_y2 = max(0, min(pixel_y2, original_height))
+            pixel_x1 = max(0, min(pixel_x1, processed_width))
+            pixel_x2 = max(0, min(pixel_x2, processed_width))
+            pixel_y1 = max(0, min(pixel_y1, processed_height))
+            pixel_y2 = max(0, min(pixel_y2, processed_height))
             
             # 裁剪图像
-            cropped_img = img.crop((pixel_x1, pixel_y1, pixel_x2, pixel_y2))
+            cropped_img = processed_img.crop((pixel_x1, pixel_y1, pixel_x2, pixel_y2))
             cropped_width, cropped_height = cropped_img.size
             
             # 构建输出文件名：图片路径（去除非法字符）+ 时间戳
@@ -110,26 +146,36 @@ def crop_image(image_path: str, bbox: List[int]) -> Dict[str, Any]:
             os.makedirs(work_dir, exist_ok=True)
             output_path = os.path.join(work_dir, output_filename)
             
-            # 保存原始裁剪图像
-            cropped_img.save(output_path, format="PNG")
+            # 保存原始裁剪图像（未缩放的版本）
+            # 计算原始图像上的裁剪坐标
+            orig_pixel_x1 = int(input_width * x1 / 999)
+            orig_pixel_x2 = int(input_width * x2 / 999)
+            orig_pixel_y1 = int(input_height * y1 / 999)
+            orig_pixel_y2 = int(input_height * y2 / 999)
             
-            # 准备返回的图像（缩放至最大1920像素）
-            max_size = 1920
-            if cropped_width > max_size or cropped_height > max_size:
-                ratio = min(max_size / cropped_width, max_size / cropped_height)
-                new_width = int(cropped_width * ratio)
-                new_height = int(cropped_height * ratio)
-                display_img = cropped_img.resize((new_width, new_height), Image.LANCZOS)
-            else:
-                display_img = cropped_img
-                new_width, new_height = cropped_width, cropped_height
+            # 确保坐标不越界
+            orig_pixel_x1 = max(0, min(orig_pixel_x1, input_width))
+            orig_pixel_x2 = max(0, min(orig_pixel_x2, input_width))
+            orig_pixel_y1 = max(0, min(orig_pixel_y1, input_height))
+            orig_pixel_y2 = max(0, min(orig_pixel_y2, input_height))
+            
+            # 从原始图像裁剪（保持原始尺寸）
+            original_cropped = img.crop((orig_pixel_x1, orig_pixel_y1, orig_pixel_x2, orig_pixel_y2))
+            original_cropped.save(output_path, format="PNG")
+            original_cropped_width, original_cropped_height = original_cropped.size
+            
+            # 返回图像处理：大于1920则缩小，小于1920则保持不变
+            display_img = resize_to_max_size(cropped_img, max_size, allow_upscale=False)
+            display_width, display_height = display_img.size
             
             # 将图像转换为base64
             buffer = io.BytesIO()
             # 转换为RGB模式（如果必要）
             if display_img.mode in ('RGBA', 'LA', 'P'):
-                display_img = display_img.convert('RGB')
-            display_img.save(buffer, format='PNG')
+                display_img_rgb = display_img.convert('RGB')
+            else:
+                display_img_rgb = display_img
+            display_img_rgb.save(buffer, format='PNG')
             image_data = buffer.getvalue()
             encoded_string = base64.b64encode(image_data).decode('utf-8')
             
@@ -138,11 +184,12 @@ def crop_image(image_path: str, bbox: List[int]) -> Dict[str, Any]:
             
             # 构建返回信息
             info_text = f"图像截取成功！\n" \
-                       f"原始图像尺寸: {original_width}x{original_height}像素\n" \
+                       f"原始图像尺寸: {input_width}x{input_height}像素\n" \
+                       f"处理后图像尺寸（用于裁剪）: {processed_width}x{processed_height}像素\n" \
                        f"截取区域（相对坐标）: [{x1}, {x2}, {y1}, {y2}]\n" \
                        f"截取区域（像素坐标）: ({pixel_x1}, {pixel_y1}) - ({pixel_x2}, {pixel_y2})\n" \
-                       f"截取图像尺寸: {cropped_width}x{cropped_height}像素\n" \
-                       f"显示图像尺寸: {new_width}x{new_height}像素\n" \
+                       f"原始裁剪图像尺寸: {original_cropped_width}x{original_cropped_height}像素\n" \
+                       f"返回图像尺寸: {display_width}x{display_height}像素\n" \
                        f"保存路径: {output_path}"
             
             return {
