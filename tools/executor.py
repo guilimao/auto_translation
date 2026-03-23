@@ -13,6 +13,7 @@ from .directory_list import list_directory
 from .image_tools import read_image
 from .pdf_to_image import pdf_to_image
 from .font_list import font_list
+from .crop_image import crop_image
 
 
 # ========== 工具函数映射 ==========
@@ -26,6 +27,7 @@ TOOL_FUNCTIONS = {
     "read_image": read_image,
     "pdf_to_image": pdf_to_image,
     "font_list": font_list,
+    "crop_image": crop_image,
 }
 
 

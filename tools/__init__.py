@@ -33,6 +33,7 @@ from .directory_list import list_directory
 from .image_tools import read_image
 from .pdf_to_image import pdf_to_image
 from .font_list import font_list
+from .crop_image import crop_image
 
 # 导出执行器函数
 from .executor import execute_tool, process_tool_calls, TOOL_FUNCTIONS
@@ -51,6 +52,7 @@ __all__ = [
     "read_image",
     "pdf_to_image",
     "font_list",
+    "crop_image",
     # 执行器函数
     "execute_tool",
     "process_tool_calls",

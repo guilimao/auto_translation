@@ -1,5 +1,5 @@
 {
-  "base_url": "https://api.moonshot.cn/v1",
-  "api_key": "MOONSHOT_API_KEY",
-  "model": "kimi-k2.5"
+  "base_url": "https://openrouter.ai/api/v1",
+  "api_key": "OPENROUTER_API_KEY",
+  "model": "google/gemini-3.1-pro-preview"
 }
