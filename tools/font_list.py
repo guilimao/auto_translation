@@ -10,6 +10,21 @@ import json
 from pathlib import Path
 
 
+# 工具定义（供LLM识别）
+TOOL_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "font_list",
+        "description": "列出 Typst 所有可用的字体列表。",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    }
+}
+
+
 def to_docker_path(path: Path) -> str:
     """将 Windows 路径转换为 Docker 挂载格式"""
     abs_path = str(path.absolute())

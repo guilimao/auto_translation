@@ -5,6 +5,23 @@
 import os
 
 
+# 工具定义（供LLM识别）
+TOOL_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "read_file",
+        "description": "读取文本文件的内容",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_name": {"type": "string", "description": "要读取的文件路径"}
+            },
+            "required": ["file_name"]
+        }
+    }
+}
+
+
 def read_file(file_name):
     """读取文本文件内容"""
     try:

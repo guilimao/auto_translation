@@ -5,8 +5,12 @@ Tools模块 - 提供各种工具函数的集合
 - read_file: 读取文本文件内容
 - write_file: 创建或更新文件内容
 - replace: 在文件中查找并替换文本
+- typst_compiler: 使用Docker编译Typst文件
 - list_directory: 列出目录的树状结构
 - read_image: 读取图像文件并编码为base64
+- pdf_to_image: 将PDF文件转换为PNG图像
+- font_list: 列出Typst可用的字体列表
+- crop_image: 根据BBOX框截取图像的特定区域
 
 使用方式:
     from tools import TOOLS, execute_tool, process_tool_calls
@@ -21,7 +25,7 @@ Tools模块 - 提供各种工具函数的集合
     should_continue = process_tool_calls(messages, tool_calls)
 """
 
-# 导出工具配置
+# 导出工具定义
 from .config import TOOLS
 
 # 导出各个工具函数（供直接使用）

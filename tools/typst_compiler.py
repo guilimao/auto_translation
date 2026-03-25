@@ -20,6 +20,35 @@ from datetime import datetime
 from pathlib import Path
 
 
+# 工具定义（供LLM识别）
+TOOL_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "typst_compiler",
+        "description": "使用 Docker 编译 Typst 文件，支持输出 PDF、PNG、SVG 格式。输出保存到项目根目录下的 outputs 文件夹中，每次调用会创建一个新的时间戳文件夹。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "要编译的 Typst 文件路径"
+                },
+                "format": {
+                    "type": "string",
+                    "description": "输出格式: pdf、png 或 svg",
+                    "enum": ["pdf", "png", "svg"]
+                },
+                "output_name": {
+                    "type": "string",
+                    "description": "输出文件名模板。PDF无限制；PNG和SVG必须包含{p}(页码)或{0p}(补零页码)，可包含{t}显示总页数。示例: output-{p}-of-{t}.png, page-{0p}.svg"
+                }
+            },
+            "required": ["file_path", "format", "output_name"]
+        }
+    }
+}
+
+
 def typst_compiler(file_path: str, format: str, output_name: str) -> str:
     """
     使用 Docker 编译 Typst 文件

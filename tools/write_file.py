@@ -5,6 +5,24 @@
 import os
 
 
+# 工具定义（供LLM识别）
+TOOL_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "write_file",
+        "description": "创建新文件或更新现有文件内容",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_name": {"type": "string", "description": "目标文件路径"},
+                "file_content": {"type": "string", "description": "文件内容"}
+            },
+            "required": ["file_name", "file_content"]
+        }
+    }
+}
+
+
 def write_file(file_name, file_content):
     """创建新文件或更新现有文件内容"""
     try:

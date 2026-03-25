@@ -4,6 +4,40 @@ from typing import List, Optional, Dict, Tuple, Union, Pattern
 from dataclasses import dataclass, field
 
 
+# 工具定义（供LLM识别）
+TOOL_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "list_directory",
+        "description": "列出目录的树状结构。当同一层级项目过多时，总输出量控制在2000字符内。如果目录中存在.gitignore文件，将自动跳过其中指定的文件和目录。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "要列出的目录路径（默认为当前目录）",
+                },
+                "depth": {
+                    "type": "integer",
+                    "description": "展开目录的层数，默认值为0，代表全部展开，1代表只展开当前目录下一层，2代表展开两层，以此类推",
+                },
+                "blacklist": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "黑名单，用于排除文件名中含有特定字符的项，可以用来滤除结果中无关的干扰项，默认值为.git文件夹",
+                },
+                "whitelist": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "白名单，用于仅保留文件名中含有特定字符的项，可用于在目录下查找指定文件",
+                }
+            },
+            "required": [],
+        },
+    }
+}
+
+
 @dataclass
 class Node:
     id: int

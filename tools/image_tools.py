@@ -139,27 +139,21 @@ def read_image(image_path: str, max_size: int = 1920) -> Dict[str, Any]:
 
 
 # 工具定义（供LLM识别）
-IMAGE_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "read_image",
-            "description": "读取一个图像文件，输入图像路径，将图像编码为base64格式返回，可用于分析图像内容。支持jpg、jpeg、png、gif、bmp、webp、tiff、svg等格式。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "image_path": {
-                        "type": "string",
-                        "description": "图像文件的路径"
-                    }
-                },
-                "required": ["image_path"],
+TOOL_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "read_image",
+        "description": "读取一个图像文件，输入图像路径，将图像编码为base64格式返回，可用于分析图像内容。支持jpg、jpeg、png、gif、bmp、webp、tiff、svg等格式。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "image_path": {
+                    "type": "string",
+                    "description": "图像文件的路径"
+                }
             },
+            "required": ["image_path"]
         }
     }
-]
-
-# 工具函数映射（供Agent执行）
-IMAGE_FUNCTIONS = {
-    "read_image": read_image
 }
+

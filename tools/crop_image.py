@@ -218,38 +218,32 @@ def crop_image(image_path: str, bbox: List[int]) -> Dict[str, Any]:
 
 
 # 工具定义（供LLM识别）
-CROP_IMAGE_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "crop_image",
-            "description": "根据BBOX框截取图像的特定区域，将框内的部分截取下来，以PNG图像的形式保存到项目根目录下的work文件夹。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "image_path": {
-                        "type": "string",
-                        "description": "图片路径"
-                    },
-                    "bbox": {
-                        "type": "array",
-                        "description": "BBOX框，格式为[x1, x2, y1, y2]，数值取0-999之间，为相对坐标。例如[100, 500, 200, 800]表示从(10%, 20%)到(50%, 80%)的区域",
-                        "items": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "maximum": 999
-                        },
-                        "minItems": 4,
-                        "maxItems": 4
-                    }
+TOOL_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "crop_image",
+        "description": "根据BBOX框截取图像的特定区域，将框内的部分截取下来，以PNG图像的形式保存到项目根目录下的work文件夹。输入的bbox是相对坐标（0-999），返回值包含截取图像的原始长宽信息和缩放后的图像。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "image_path": {
+                    "type": "string",
+                    "description": "图片路径"
                 },
-                "required": ["image_path", "bbox"],
+                "bbox": {
+                    "type": "array",
+                    "description": "BBOX框，格式为[x1, x2, y1, y2]，数值取0-999之间，为相对坐标。例如[100, 500, 200, 800]表示从(10%, 20%)到(50%, 80%)的区域",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 999
+                    },
+                    "minItems": 4,
+                    "maxItems": 4
+                }
             },
+            "required": ["image_path", "bbox"]
         }
     }
-]
-
-# 工具函数映射（供Agent执行）
-CROP_IMAGE_FUNCTIONS = {
-    "crop_image": crop_image
 }
+

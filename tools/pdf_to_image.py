@@ -64,9 +64,9 @@ def pdf_to_image(pdf_path: str) -> Union[str, Dict[str, Any]]:
         # 生成时间戳
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # 创建输出目录: work/{pdf文件名}_{时间戳}/
+        # 创建输出目录: workspaces/{pdf文件名}_{时间戳}/
         project_root = get_project_root()
-        output_dir = project_root / "work" / f"{pdf_name}_{timestamp}"
+        output_dir = project_root / "workspaces" / f"{pdf_name}_{timestamp}"
         output_dir.mkdir(parents=True, exist_ok=True)
         
         # 打开PDF文件
@@ -114,27 +114,21 @@ def pdf_to_image(pdf_path: str) -> Union[str, Dict[str, Any]]:
 
 
 # 工具定义（供LLM识别）
-PDF_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "pdf_to_image",
-            "description": "将PDF文件转换为PNG图像。使用PyMuPDF将输入的PDF文件转换为原始尺寸的PNG图像，输出保存到项目根目录下的work文件夹中，每次调用会创建一个新的文件名+时间戳子文件夹。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "pdf_path": {
-                        "type": "string",
-                        "description": "要转换的PDF文件路径"
-                    }
-                },
-                "required": ["pdf_path"],
+TOOL_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "pdf_to_image",
+        "description": "将PDF文件转换为PNG图像。使用PyMuPDF将输入的PDF文件转换为原始尺寸的PNG图像，输出保存到项目根目录下的work文件夹中，每次调用会创建一个新的文件名+时间戳子文件夹。每张图像以文件名+所在页数的格式命名。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "pdf_path": {
+                    "type": "string",
+                    "description": "要转换的PDF文件路径"
+                }
             },
+            "required": ["pdf_path"]
         }
     }
-]
-
-# 工具函数映射（供Agent执行）
-PDF_FUNCTIONS = {
-    "pdf_to_image": pdf_to_image
 }
+

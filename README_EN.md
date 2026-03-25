@@ -8,7 +8,7 @@ Agent-based Automatic Translation Tool
 
 ## Project Overview
 
-Leveraging multimodal LLM and Typst typesetting tools to generate high-quality translated documents with visual appearance similar to the original, supporting mixed text and image layouts.
+Leveraging multimodal LLM and Typst typesetting tools to make high-quality translated documents with visual appearance similar to the original, supporting mixed text and image layouts.
 
 ---
 
