@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auto-translation"
-version = "0.1.0"
-description = "基于Agent的自动翻译工具"
+version = "0.2.0"
+description = "基于多 Agent 的自动翻译工具"
 requires-python = ">=3.10"
 dependencies = [
     "openai>=1.0.0",
@@ -14,9 +14,9 @@ dependencies = [
 ]
 
 [project.scripts]
-chat = "cli:main"
+chat = "ui.session:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["tools*"]
+include = ["core*", "ui*", "tools*"]
 exclude = ["__pycache__*", ".venv*"]

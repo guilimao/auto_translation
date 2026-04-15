@@ -1,34 +1,15 @@
 # auto-translation
 
-基于 Agent 的自动翻译工具
+基于多 Agent 的自动翻译工具。
 
 [English Version](README_EN.md)
 
----
-
-## 项目简介
-
-借助多模态 LLM 和 Typst 排版工具，制作与原始文档观感相近的高质量翻译文件，支持图文混排。
-
----
-
-## 安装步骤
+## 安装
 
 ### 1. 安装 Docker
 
-#### Windows
-
-<a href="https://get.microsoft.com/installer/download/xp8cbj40xlbwkx?referrer=appbadge" target="_blank">
-    <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200" alt="Get Docker from Microsoft Store"/>
-</a>
-
-或从 [Docker 官方发布页](https://docs.docker.com/desktop/release-notes/) 下载安装
-
-#### Linux
-
-访问 [Docker 安装指南](https://docs.docker.com/engine/install/)
-
----
+- Windows: 使用 Docker Desktop
+- Linux: 参考 Docker 官方安装指南
 
 ### 2. 安装 uv
 
@@ -42,59 +23,59 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
----
-
-### 3. 同步依赖项
+### 3. 安装依赖
 
 ```bash
 uv sync
 ```
 
----
-
 ### 4. 配置 API Key
-
-将 API KEY 添加到环境变量：
 
 ```bash
 export OPENROUTER_API_KEY="sk-......"
 ```
 
----
-
-## 使用方式
-
-### 基本用法
+## 启动
 
 ```bash
 uv run cli.py
 ```
 
-在对话中告诉模型需要翻译的文件路径即可。
+## 当前目录结构
 
-输出文件保存在 `outputs` 文件夹下，退出对话时会清理中间文件，保留最后一个可用版本。
+- `core/`: Agent、运行时、限流、配置、日志、提示词
+- `ui/`: CLI 会话与终端渲染
+- `tools/`: 工具定义、目录扫描、工具工厂
+- `inputs/`: 输入文件目录
+- `workspaces/`: 页面级工作区目录
+- `output/`: 最终产物目录
+- `logs/`: 每次 CLI 启动后的会话日志目录
+- `fonts/`: Typst 字体目录
 
----
+## 说明
 
-### 配置文件
+- 调度器会在 CLI 中显示思考内容、普通输出和工具调用。
+- 执行器状态以固定行展示；运行完成后会显示“正常提交结果 / 未提交成果 / 传输报错 / 用户中断”。
+- 执行器默认工作路径是自身 workspace，但允许在项目根目录范围内跨 workspace 查看其他页面。
+- `read_image` / `crop_image` 会自动压缩上一张同类图像消息，节省 token。
+- `color_sample` 的 `x/y` 使用 `1-1000` 的归一化相对坐标。
 
-`config.json` 格式如下：
+## 配置文件
+
+`config.json` 示例：
 
 ```json
 {
-  "base_url": "在这里填写推理提供商的 base_url",
-  "api_key": "在这里填写对应的 API KEY 名称，并将实际的 API KEY 保存到系统环境变量",
-  "model": "在这里填写模型名称"
+  "base_url": "https://openrouter.ai/api/v1",
+  "api_key": "OPENROUTER_API_KEY",
+  "model": "google/gemini-3.1-pro-preview",
+  "scheduler_model": "google/gemini-3.1-pro-preview",
+  "executor_model": "google/gemini-3.1-pro-preview",
+  "concurrency": {
+    "max_parallel_agents": 4,
+    "max_concurrent_requests": 4,
+    "qps": 1.0,
+    "qpm": 30
+  }
 }
 ```
-
----
-
-### 自定义字体
-
-下载需要的字体文件，解压后直接放置到 `fonts` 文件夹中即可。
-
-例如，你可以在[Source Han Sans 字体发布页](https://github.com/adobe-fonts/source-han-sans/releases)下载[All Static Region Specific Subset OTFs](https://github.com/adobe-fonts/source-han-sans/releases/download/2.005R/05_SourceHanSansSubsetOTF.zip)，解压后放置到项目根目录下的fonts文件夹中。工具可以识别嵌套文件夹下的字体文件，并将正确的字体名称告知模型。
-
-
----

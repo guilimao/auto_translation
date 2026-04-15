@@ -1,5 +1,13 @@
 {
   "base_url": "https://openrouter.ai/api/v1",
   "api_key": "OPENROUTER_API_KEY",
-  "model": "google/gemini-3.1-pro-preview"
+  "model": "google/gemini-3.1-pro-preview",
+  "scheduler_model": "google/gemini-3.1-pro-preview",
+  "executor_model": "google/gemini-3.1-pro-preview",
+  "concurrency": {
+    "max_parallel_agents": 4,
+    "max_concurrent_requests": 4,
+    "qps": 1.0,
+    "qpm": 30
+  }
 }
