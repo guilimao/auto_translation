@@ -9,5 +9,12 @@
     "max_concurrent_requests": 4,
     "qps": 1.0,
     "qpm": 30
+  },
+  "inference": {
+    "temperature": 0.2,
+    "max_output_tokens": 8192,
+    "repetition_penalty": 1.05,
+    "reasoning_enabled": true,
+    "reasoning_effort": "low"
   }
 }

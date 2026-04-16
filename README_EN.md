@@ -1,4 +1,4 @@
-# auto-translation
+# Auto-Translator
 
 Multi-agent document translation tool.
 

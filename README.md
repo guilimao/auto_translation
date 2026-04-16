@@ -1,4 +1,4 @@
-# auto-translation
+# Auto-Translator
 
 基于多 Agent 的自动翻译工具。
 

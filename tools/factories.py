@@ -408,15 +408,25 @@ async def tool_create_executor(
     if ctx.runtime.cancel_event.is_set():
         interrupted = True
         ctx.runtime.reset_interrupt()
+
     results = sorted(results, key=lambda item: item['page'])
     lines = ['执行器批量运行结果：']
+
+    def _single_line(value: str, *, limit: int = 220) -> str:
+        text = ' '.join(str(value).split())
+        if len(text) <= limit:
+            return text
+        return text[: max(0, limit - 12)].rstrip() + ' ...[已截断]'
+
     for item in results:
-        lines.append(f"- 第 {item['page']} 页: {item['status']}")
+        lines.append(f"- 第{item['page']} 页: {_single_line(item['status'])}")
         detail = item.get('detail')
         if detail and item['status'] != '运行成功':
-            lines.append(f'  详情: {detail}')
+            lines.append(f'  详情: {_single_line(detail)}')
+
     if interrupted:
-        lines.append('- 本轮执行过程中收到用户中断信号，未完成页已标记为“用户中断”。')
+        lines.append('- 本轮执行过程中收到用户中断信号，未完成页面已标记为“用户中断”。')
+
     return '\n'.join(lines)
 
 
@@ -625,3 +635,4 @@ def create_executor_tools() -> list[ToolSpec]:
         ToolSpec('read_file', EXECUTOR_SCHEMAS['read_file'], tool_read_file),
         ToolSpec('submit_result', EXECUTOR_SCHEMAS['submit_result'], tool_submit_result),
     ]
+

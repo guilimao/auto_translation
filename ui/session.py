@@ -17,12 +17,21 @@ from core import (
     SPEC_TEXT,
     load_config,
 )
+from core.agent import (
+    STATE_ERROR,
+    STATE_FINISHED,
+    STATE_INTERRUPTED,
+    STATE_OUTPUT_TOO_LONG,
+    STATE_STARTED,
+)
 from tools import create_executor_tools, create_scheduler_tools
 from tools.helpers import clean_workspaces, ensure_directories, truncate_text
 from ui.terminal import TerminalUI
 
 
 class CLISession:
+    _FONT_EXTENSIONS = {'.ttf', '.otf', '.ttc', '.otc', '.woff', '.woff2'}
+
     def __init__(self, project_root: Path) -> None:
         self.project_root = project_root
         self.config = load_config(project_root)
@@ -55,7 +64,7 @@ class CLISession:
 
         def handler(signum, frame):
             if self.runtime.has_active_agents():
-                self.ui.log('[收到 Ctrl+C，正在中断所有 Agent，并汇总当前结果...]')
+                self.ui.log('[收到 Ctrl+C，正在中断所有 Agent 并收集已完成结果...]')
                 self.runtime.interrupt_all()
             else:
                 raise KeyboardInterrupt
@@ -78,6 +87,26 @@ class CLISession:
             '完成后必须调用 submit_result 提交最终 Typst 文件。'
         )
 
+    def _scan_project_font_names(self) -> list[str]:
+        fonts_dir = self.project_root / 'fonts'
+        if not fonts_dir.exists():
+            return []
+        font_names = {
+            path.stem
+            for path in fonts_dir.rglob('*')
+            if path.is_file() and path.suffix.lower() in self._FONT_EXTENSIONS
+        }
+        return sorted(font_names, key=str.lower)
+
+    def _build_executor_system_prompt(self) -> str:
+        font_names = self._scan_project_font_names()
+        fonts_text = '\n'.join(f'- {name}' for name in font_names) if font_names else '- (none found)'
+        font_section = (
+            'Available fonts from project `fonts/` (recursive scan, including subfolders):\n'
+            f'{fonts_text}'
+        )
+        return f'{EXECUTOR_PROMPT}\n\n{font_section}'
+
     def _last_message_text(self, messages: list[dict[str, Any]]) -> str:
         for message in reversed(messages):
             content = message.get('content')
@@ -90,8 +119,12 @@ class CLISession:
                     return joined
         return '无可用消息'
 
-    def _record_executor_final(self, agent_name: str, round_no: int, state: str, detail: str | None) -> None:
+    def _record_executor_final(self, agent_name: str, round_no: int, state: str, detail: str | None) -> bool:
+        previous = self._executor_finals.get(agent_name)
+        if previous and previous[1] in {'submitted', 'interrupted', 'error', 'output_too_long'}:
+            return False
         self._executor_finals[agent_name] = (round_no, state, detail)
+        return True
 
     def _on_status(self, payload: dict[str, Any]) -> None:
         kind = payload.get('kind', 'state')
@@ -100,34 +133,52 @@ class CLISession:
         round_no = payload.get('round', 0)
         state = payload.get('state', '')
         detail = payload.get('detail')
+
         if kind == 'stream':
-            self.ui.stream(agent_name=agent_name, round_no=round_no, channel=payload['channel'], text=payload['text'])
+            if agent_type == 'scheduler':
+                self.ui.stream_scheduler(round_no=round_no, channel=payload['channel'], text=payload['text'])
             return
-        if kind == 'tool_call' and agent_type == 'scheduler':
-            self.ui.scheduler_tool_call(agent_name, round_no, detail or '')
+
+        if kind == 'tool_call':
+            if agent_type == 'scheduler':
+                self.ui.scheduler_tool_call(round_no, detail or '')
             return
+
         if agent_type == 'scheduler':
-            if kind == 'state' and state in {'启动', '等待回应', '工具调用'}:
-                self.ui.log(f'[{agent_name}][轮次 {round_no}][{state}]' + (f' {detail}' if detail else ''))
-            elif kind == 'state' and state in {'结束', '中断', '错误'}:
-                suffix = f' {detail}' if detail else ''
-                self.ui.log(f'[{agent_name}][轮次 {round_no}][{state}]' + suffix)
+            if state == STATE_STARTED:
+                self.ui.scheduler_started()
+            elif state == STATE_FINISHED:
+                self.ui.scheduler_finished(detail)
+            elif state == STATE_INTERRUPTED:
+                self.ui.scheduler_interrupted(detail)
+            elif state == STATE_ERROR:
+                self.ui.scheduler_error(detail)
             return
-        display_state = state
-        if state == '结束':
-            final_state = '正常提交结果' if detail == '正常提交结果' else '未提交成果'
-            self._record_executor_final(agent_name, round_no, final_state, detail if detail and detail != final_state else None)
-            self.ui.finish_executor(agent_name, round_no, final_state, None if detail == final_state else detail)
+
+        if state == STATE_STARTED:
+            self.ui.executor_started(agent_name, round_no)
             return
-        if state == '错误':
-            self._record_executor_final(agent_name, round_no, '传输报错', detail)
-            self.ui.finish_executor(agent_name, round_no, '传输报错', detail)
+
+        if state == STATE_FINISHED:
+            final_state = 'submitted' if detail == 'submitted' else 'no_submission'
+            final_detail = None if detail == 'submitted' else detail
+            if self._record_executor_final(agent_name, round_no, final_state, final_detail):
+                self.ui.executor_finished(agent_name, round_no, final_state, final_detail)
             return
-        if state == '中断':
-            self._record_executor_final(agent_name, round_no, '用户中断', detail)
-            self.ui.finish_executor(agent_name, round_no, '用户中断', detail)
+
+        if state == STATE_ERROR:
+            if self._record_executor_final(agent_name, round_no, 'error', detail):
+                self.ui.executor_finished(agent_name, round_no, 'error', detail)
             return
-        self.ui.update_executor(agent_name, round_no, display_state, detail)
+
+        if state == STATE_INTERRUPTED:
+            if self._record_executor_final(agent_name, round_no, 'interrupted', detail):
+                self.ui.executor_finished(agent_name, round_no, 'interrupted', detail)
+            return
+
+        if state == STATE_OUTPUT_TOO_LONG:
+            if self._record_executor_final(agent_name, round_no, 'output_too_long', detail):
+                self.ui.executor_finished(agent_name, round_no, 'output_too_long', detail)
 
     async def spawn_executor(self, workspace: Path, task_description: str) -> dict[str, Any]:
         meta = json.loads((workspace / 'workspace_meta.json').read_text(encoding='utf-8'))
@@ -137,9 +188,10 @@ class CLISession:
         agent = Agent(
             name=agent_name,
             agent_type='executor',
-            system_prompt=EXECUTOR_PROMPT,
+            system_prompt=self._build_executor_system_prompt(),
             tools=create_executor_tools(),
             model=self.config.executor_model,
+            inference=self.config.inference,
             runtime=self.runtime,
             client_factory=self.client_factory,
             workspace=workspace,
@@ -149,21 +201,28 @@ class CLISession:
         messages = [{'role': 'user', 'content': self._format_executor_prompt(workspace, task_description)}]
         result_messages = await agent.run(messages)
         flags = agent.last_run_flags
-        if flags.get('submitted'):
-            self._on_status({'kind': 'state', 'agent_name': agent_name, 'agent_type': 'executor', 'state': '结束', 'round': 0, 'detail': '正常提交结果'})
-            return {'page': page_number, 'status': '运行成功', 'workspace': str(workspace)}
-        if self.runtime.cancel_event.is_set():
-            detail = '用户中断'
-            self._on_status({'kind': 'state', 'agent_name': agent_name, 'agent_type': 'executor', 'state': '中断', 'round': 0, 'detail': detail})
-            return {'page': page_number, 'status': detail, 'detail': detail, 'workspace': str(workspace)}
-        detail = truncate_text(self._last_message_text(result_messages), 500)
         final = self._executor_finals.get(agent_name)
-        if final is None or final[1] not in {'传输报错', '用户中断'}:
-            self._on_status({'kind': 'state', 'agent_name': agent_name, 'agent_type': 'executor', 'state': '结束', 'round': 0, 'detail': detail})
+
+        if flags.get('submitted'):
+            return {'page': page_number, 'status': '运行成功', 'workspace': str(workspace)}
+
+        if final is not None and final[1] in {'error', 'interrupted', 'output_too_long'}:
+            status_map = {
+                'error': '执行失败',
+                'interrupted': '用户中断',
+                'output_too_long': '输出过长',
+            }
+            final_status = status_map[final[1]]
+            final_detail = final[2] or final_status
+            return {'page': page_number, 'status': final_status, 'detail': final_detail, 'workspace': str(workspace)}
+
+        detail = truncate_text(self._last_message_text(result_messages), 500)
+        self._record_executor_final(agent_name, 0, 'no_submission', detail)
         return {'page': page_number, 'status': detail, 'detail': detail, 'workspace': str(workspace)}
 
     async def handle_user_input(self, user_input: str) -> None:
         self.runtime.reset_interrupt()
+        self._executor_finals.clear()
         self.scheduler_messages.append({'role': 'user', 'content': user_input})
         scheduler = Agent(
             name='scheduler',
@@ -174,6 +233,7 @@ class CLISession:
                 max_parallel_agents=self.config.concurrency.max_parallel_agents,
             ),
             model=self.config.scheduler_model,
+            inference=self.config.inference,
             runtime=self.runtime,
             client_factory=self.client_factory,
             workspace=self.project_root,
@@ -199,8 +259,7 @@ class CLISession:
             f'max_concurrent_requests={self.config.concurrency.max_concurrent_requests}, '
             f'qps={self.config.concurrency.qps}, qpm={self.config.concurrency.qpm}'
         )
-        self.ui.log('请将待处理文件放入 inputs 文件夹后，再告诉调度器要翻译哪个文件。')
-
+        self.ui.log('请把待处理文件放入 inputs 后，再输入你的任务。')
 
 
 def main() -> None:
